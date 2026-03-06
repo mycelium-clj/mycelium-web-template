@@ -1,0 +1,10 @@
+{:description "A barebones mycelium web application."
+ :transform
+ [["build" ""
+   {"deps.tmpl" "deps.edn"}]
+  ["src-clj" "src/clj/{{top/file}}/{{main/file}}"]
+  ["test-clj" "test/clj/{{top/file}}/{{main/file}}"]
+  ["env-dev-user" "env/dev/clj"]
+  ["env-dev" "env/dev/clj/{{top/file}}/{{main/file}}"]
+  ["env-prod" "env/prod/clj/{{top/file}}/{{main/file}}"]
+  ["resources-app" "resources" {} ["<<" ">>"]]]}
