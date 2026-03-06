@@ -4,6 +4,7 @@
     [integrant.core :as ig]
     [integrant.repl :refer [clear go halt prep init reset reset-all]]
     [integrant.repl.state :as state]
+    [{{top/ns}}.{{main/ns}}.core]
     [{{top/ns}}.{{main/ns}}.config :as config]))
 
 (defn dev-prep!
