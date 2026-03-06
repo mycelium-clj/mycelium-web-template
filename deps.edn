@@ -1,1 +1,6 @@
-{:paths ["resources"]}
+{:deps    {babashka/fs   {:mvn/version "0.5.31"}
+           selmer/selmer {:mvn/version "1.12.61"}}
+ :paths   ["src" "resources"]
+ :aliases {:build {:deps      {io.github.clojure/tools.build {:mvn/version "0.10.12"}
+                               slipset/deps-deploy           {:mvn/version "0.2.2"}}
+                   :ns-default build}}}

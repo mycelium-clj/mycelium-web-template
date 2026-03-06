@@ -1,0 +1,4 @@
+{:description "A mycelium web application template"
+ :root "_"
+ :data-fn io.github.mycelium-clj.mycelium-web-template/data-fn
+ :template-fn io.github.mycelium-clj.mycelium-web-template/template-fn}

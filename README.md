@@ -5,31 +5,15 @@ A [deps-new](https://github.com/seancorfield/deps-new) template for creating [My
 ## Creating a New Project
 
 ```bash
-clojure -Sdeps \
-  '{:deps {io.github.seancorfield/deps-new
-           {:git/sha "48bf01edfa6a959a970d7dcab3d882a93607a7f6"}
-           io.github.mycelium-clj/mycelium-web-template
-           {:git/url "https://github.com/mycelium-clj/mycelium-web-template"
-            :git/sha "SHA"}}}' \
-  -X org.corfield.new/create \
-  :template '"io.github.mycelium-clj/web"' \
-  :name '"yourname/yourapp"'
+clj -Tnew create :template io.github.mycelium-clj/mycelium-web-template :name yourname/yourapp
 ```
 
 This creates a `yourapp/` directory with a ready-to-run web application.
 
-For local development of the template itself, replace the git coordinate with `:local/root`:
-
-```bash
-clojure -Sdeps \
-  '{:deps {io.github.seancorfield/deps-new
-           {:git/sha "48bf01edfa6a959a970d7dcab3d882a93607a7f6"}
-           io.github.mycelium-clj/mycelium-web-template
-           {:local/root "."}}}' \
-  -X org.corfield.new/create \
-  :template '"io.github.mycelium-clj/web"' \
-  :name '"yourname/yourapp"'
-```
+> **Note:** This requires [deps-new](https://github.com/seancorfield/deps-new) v0.11+ installed as a tool:
+> ```bash
+> clj -Ttools install-latest :lib io.github.seancorfield/deps-new :as new
+> ```
 
 ## What's in the Generated Project
 
@@ -205,20 +189,23 @@ Then add `:db #ig/ref :your/db-component` to the `:reitit.routes/pages` entry in
 
 ## Template Development
 
-The template source lives under `resources/io/github/mycelium_clj/web/`:
+### Building
 
-| Directory | Target in generated project | Notes |
-|-----------|---------------------------|-------|
-| `root/` | Project root | Auto-copied (`.gitignore`, `README.md`) |
-| `build/` | Project root | `deps.tmpl` -> `deps.edn` |
-| `src-clj/` | `src/clj/{{ns}}/` | Application source |
-| `test-clj/` | `test/clj/{{ns}}/` | Tests |
-| `env-dev-user/` | `env/dev/clj/` | `user.clj` (REPL helpers) |
-| `env-dev/` | `env/dev/clj/{{ns}}/` | Dev profile code |
-| `env-prod/` | `env/prod/clj/{{ns}}/` | Prod profile code |
-| `resources-app/` | `resources/` | Uses `<<>>` delimiters to preserve Selmer `{{}}` |
+```bash
+clj -T:build jar       # Build JAR
+clj -T:build install   # Install to local Maven repo
+clj -T:build deploy    # Deploy to Clojars
+```
 
-Template files use `{{top/ns}}`, `{{main/ns}}`, `{{top/file}}`, `{{main/file}}`, and `{{raw-name}}` for project name substitution.
+### How the Template Works
+
+The template uses [deps-new](https://github.com/seancorfield/deps-new) with custom `data-fn` and `template-fn` functions (following the [Kit](https://github.com/kit-clj/kit) pattern):
+
+- Template files live under `resources/io/github/mycelium_clj/mycelium_web_template/`
+- Content rendering uses Selmer with `<<`/`>>` delimiters to avoid conflict with `{{}}` in HTML templates
+- `data-fn` reads all template files, renders `<<ns-name>>` and `<<name>>` substitutions
+- `template-fn` writes rendered files to a temp directory and returns deps-new transform instructions
+- Namespace directories are automatically inserted under `src/clj/`, `test/clj/`, and `env/` paths
 
 ## License
 
