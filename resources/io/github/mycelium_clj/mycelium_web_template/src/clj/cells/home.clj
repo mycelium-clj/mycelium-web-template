@@ -1,23 +1,20 @@
 (ns <<ns-name>>.cells.home
-  (:require [mycelium.cell :as cell]
+  (:require [mycelium.core :as myc]
             [selmer.parser :as selmer]))
 
-(defmethod cell/cell-spec :request/parse-home [_]
-  {:id      :request/parse-home
-   :doc     "Extract name parameter from the HTTP request"
-   :handler (fn [_resources data]
-              (let [params (or (get-in data [:http-request :query-params]) {})
-                    name   (or (get params "name") (get params :name) "World")]
-                (assoc data :name name)))
-   :schema  {:input  [:map [:http-request :map]]
-             :output [:map [:name :string]]}})
+(myc/defcell :request/parse-home
+  {:input  {:http-request :map}
+   :output {:name :string}
+   :doc    "Extract name parameter from the HTTP request"}
+  (fn [_resources data]
+    (let [params (or (get-in data [:http-request :query-params]) {})
+          name   (or (get params "name") (get params :name) "World")]
+      {:name name})))
 
-(defmethod cell/cell-spec :page/render-home [_]
-  {:id      :page/render-home
-   :doc     "Render the home page HTML"
-   :handler (fn [_resources data]
-              (assoc data :html
-                     (selmer/render-file "html/home.html"
-                                         {:name (:name data)})))
-   :schema  {:input  [:map [:name :string]]
-             :output [:map [:html :string]]}})
+(myc/defcell :page/render-home
+  {:input  {:name :string}
+   :output {:html :string}
+   :doc    "Render the home page HTML"}
+  (fn [_resources data]
+    {:html (selmer/render-file "html/home.html"
+                               {:name (:name data)})}))

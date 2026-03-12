@@ -1,6 +1,6 @@
 (ns <<ns-name>>.workflows.home
   (:require [mycelium.core :as myc]
-            ;; Load cell definitions
+            ;; load cell definitions
             [<<ns-name>>.cells.home]))
 
 (def workflow-def

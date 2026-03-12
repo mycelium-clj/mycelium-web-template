@@ -4,7 +4,7 @@
 
         ;; Mycelium
         io.github.mycelium-clj/mycelium  {:git/url "https://github.com/mycelium-clj/mycelium"
-                                           :git/sha "ab716147d1091ace2755ef1c47eff609cab99cdf"}
+                                           :git/sha "806c406590e0361490f4303248c9c40967aa9884"}
 
         ;; Kit
         io.github.kit-clj/kit-core      {:mvn/version "1.0.10"}
