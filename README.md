@@ -41,6 +41,7 @@ yourapp/
 ├── src/clj/yourname/yourapp/
 │   ├── core.clj                        # Application entry point
 │   ├── config.clj                      # Config loading
+│   ├── db.clj                          # Database integrant component
 │   ├── web/
 │   │   ├── handler.clj                 # Ring handler (Integrant components)
 │   │   ├── middleware/
@@ -113,13 +114,18 @@ The application is configured via `resources/system.edn` using [Aero](https://gi
  :handler/ring
  {:router #ig/ref :router/core ...}
 
- :router/routes
- {:routes #ig/refset :reitit/routes}   ;; collects all route sets
+ :db/sqlite
+ {:dbname       #or [#env DB_NAME "db/app.sqlite"]
+  :mycelium/doc "SQLite JDBC datasource. Use with next.jdbc..."}
 
- :reitit.routes/pages {}}              ;; page routes (mycelium workflows)
+ :router/routes
+ {:routes #ig/refset :reitit/routes}
+
+ :reitit.routes/pages
+ {:db #ig/ref :db/sqlite}}
 ```
 
-The component dependency chain: **server** -> **handler** -> **router** -> **routes**. Adding new route sets (e.g., `:reitit.routes/api`) is as simple as adding a new entry to `system.edn` and defining the corresponding `ig/init-key`.
+The component dependency chain: **server** → **handler** → **router** → **routes** → **resources**. Resources (`:db/sqlite`, etc.) are injected into routes via `#ig/ref` and automatically passed to mycelium cell handlers.
 
 ### How Mycelium Integrates
 
@@ -149,14 +155,14 @@ Each HTTP request is handled by a **mycelium workflow** — a directed graph of 
 (def compiled (myc/pre-compile workflow-def))
 ```
 
-**Routes** wire compiled workflows to HTTP endpoints using `mycelium.middleware/workflow-handler`:
+**Routes** wire compiled workflows to HTTP endpoints using `mycelium.middleware/workflow-handler`, passing integrant-managed resources through to cell handlers:
 
 ```clojure
-(defn page-routes [_opts]
-  [["/" {:get {:handler (mw/workflow-handler home/compiled {})}}]])
+(defn page-routes [opts]
+  [["/" {:get {:handler (mw/workflow-handler home/compiled {:resources opts})}}]])
 ```
 
-The workflow handler automatically passes the Ring request as `{:http-request req}` and extracts the `:html` key from the result as the response body.
+The workflow handler automatically passes the Ring request as `{:http-request req}` to the workflow input, injects `opts` as the `resources` map available to all cell handlers, and extracts the `:html` key from the result as the response body.
 
 ### Adding a New Page
 
@@ -165,27 +171,82 @@ The workflow handler automatically passes the Ring request as `{:http-request re
 3. **Add a route** in `src/clj/.../web/routes/pages.clj` — wire the compiled workflow to a path
 4. **Add a template** in `resources/html/` — Selmer template rendered by the UI cell
 
-### Adding Resources (Database, etc.)
+### Adding Resources (Database, Cache, HTTP Client, etc.)
 
-Cells can declare resource dependencies via `:requires`. Pass resources through the workflow handler:
+Resources are external dependencies (database connections, caches, HTTP clients) that cells can access at runtime. The template uses a convention-based approach:
+
+**1. Define the resource as an Integrant component** with a `:mycelium/doc` description:
+
+```edn
+;; In resources/system.edn:
+:db/sqlite
+{:dbname       #or [#env DB_NAME "db/app.sqlite"]
+ :mycelium/doc "SQLite JDBC datasource. Use with next.jdbc: (jdbc/execute! db [\"SQL\"]) for writes, (jdbc/execute! db [\"SELECT ...\"]) for reads."}
+
+:cache/redis
+{:uri          #or [#env REDIS_URI "redis://localhost:6379"]
+ :mycelium/doc "Redis cache client. Use (cache/get client key) and (cache/set client key value ttl-ms)."}
+```
+
+The `:mycelium/doc` key serves two purposes:
+- **Discovery**: The sporulator identifies resources by the presence of this key (no hardcoded blocklist)
+- **Agent awareness**: The LLM agent sees these descriptions when generating cell implementations, so it knows the API to use
+
+**2. Wire resources to routes** via `#ig/ref` in `:reitit.routes/pages`:
+
+```edn
+:reitit.routes/pages
+{:db    #ig/ref :db/sqlite
+ :cache #ig/ref :cache/redis}
+```
+
+All keys injected here are automatically passed as the `resources` map to every mycelium cell handler. No code changes needed in route files — the template's `page-routes` passes the full opts map through:
 
 ```clojure
-;; In your cell:
+(defn page-routes [opts]
+  [["/" {:get {:handler (mw/workflow-handler home/compiled {:resources opts})}}]])
+```
+
+**3. Use resources in cells** by declaring `:requires` and destructuring the resources map:
+
+```clojure
 (defmethod cell/cell-spec :todo/list [_]
   {:id       :todo/list
    :requires [:db]
    :handler  (fn [{:keys [db]} data]
-               (assoc data :todos (query-todos db)))
-   ...})
-
-;; In your route (assuming :db is passed from system.edn):
-(defmethod ig/init-key :reitit.routes/pages
-  [_ {:keys [db]}]
-  (fn []
-    ["" [["/" {:get {:handler (mw/workflow-handler compiled {:resources {:db db}})}}]]]))
+               (let [todos (jdbc/execute! db ["SELECT * FROM todos"])]
+                 {:todos todos}))
+   :schema   {:input  [:map]
+              :output [:map [:todos [:vector :map]]]}
+   :doc      "Lists all todo items from the database"})
 ```
 
-Then add `:db #ig/ref :your/db-component` to the `:reitit.routes/pages` entry in `system.edn`.
+**Adding a new resource** only requires two changes:
+1. Add the Integrant component to `system.edn` with `:mycelium/doc`
+2. Add `#ig/ref` to `:reitit.routes/pages`
+
+No route code, middleware, or handler changes needed.
+
+### Using the Sporulator
+
+The [Sporulator](https://github.com/mycelium-clj/sporulator) is a dev tool that designs and implements mycelium workflows via LLM agents. To use it:
+
+**1. Add the sporulator dependency** to your `:nrepl` or `:dev` alias:
+
+```edn
+:nrepl {:extra-deps {io.github.mycelium-clj/sporulator {:local/root "../sporulator"}}
+        :main-opts  ["-m" "nrepl.cmdline" "-i"]}
+```
+
+**2. Start the sporulator server** from the REPL (see the generated `user.clj` for helpers):
+
+```clojure
+(sporulator-go!)   ;; starts on port 8420
+```
+
+**3. Open the UI** at [http://localhost:5173](http://localhost:5173) (requires the sporulator-ui dev server).
+
+The sporulator automatically discovers resources from your `system.edn` via the `:mycelium/doc` convention. When designing workflows, cells that declare `:requires [:db]` will have the resource description included in the LLM prompt, so the agent knows how to use each resource correctly.
 
 ## Template Development
 
