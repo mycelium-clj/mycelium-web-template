@@ -3,9 +3,11 @@
             [mycelium.middleware :as mw]
             [<<ns-name>>.workflows.home :as home]))
 
-(defn page-routes [{:keys [db]}]
+(defn page-routes [opts]
+  ;; All integrant-injected resources are passed through to mycelium cells.
+  ;; Cells access them via (fn [resources data] ...) where resources = opts.
   [["/" {:get {:handler (mw/workflow-handler home/compiled
-                          {:resources {:db db}})}}]])
+                          {:resources opts})}}]])
 
 (derive :reitit.routes/pages :reitit/routes)
 

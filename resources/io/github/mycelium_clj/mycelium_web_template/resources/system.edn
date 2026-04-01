@@ -22,7 +22,8 @@
                                       :default-charset        "utf-8"}}}
 
  :db/sqlite
- {:dbname #or [#env DB_NAME "db/app.sqlite"]}
+ {:dbname       #or [#env DB_NAME "db/app.sqlite"]
+  :mycelium/doc "SQLite JDBC datasource. Use with next.jdbc: (jdbc/execute! db [\"SQL\"]) for writes, (jdbc/execute! db [\"SELECT ...\"]) for reads. Returns vectors of maps with keyword keys."}
 
  :reitit.routes/pages
  {:db #ig/ref :db/sqlite}
