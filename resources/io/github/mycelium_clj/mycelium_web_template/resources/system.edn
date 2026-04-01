@@ -21,8 +21,11 @@
                                       :content-types          true
                                       :default-charset        "utf-8"}}}
 
+ :db/sqlite
+ {:dbname #or [#env DB_NAME "db/app.sqlite"]}
+
  :reitit.routes/pages
- {}
+ {:db #ig/ref :db/sqlite}
 
  :router/routes
  {:routes #ig/refset :reitit/routes}

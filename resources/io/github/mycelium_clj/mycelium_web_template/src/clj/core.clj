@@ -9,6 +9,9 @@
     [kit.edge.server.jetty]
     [<<ns-name>>.web.handler]
 
+    ;; Database
+    [<<ns-name>>.db]
+
     ;; Routes
     [<<ns-name>>.web.routes.pages])
   (:gen-class))

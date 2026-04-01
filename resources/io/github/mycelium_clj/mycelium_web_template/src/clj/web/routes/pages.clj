@@ -3,8 +3,9 @@
             [mycelium.middleware :as mw]
             [<<ns-name>>.workflows.home :as home]))
 
-(defn page-routes [_opts]
-  [["/" {:get {:handler (mw/workflow-handler home/compiled {})}}]])
+(defn page-routes [{:keys [db]}]
+  [["/" {:get {:handler (mw/workflow-handler home/compiled
+                          {:resources {:db db}})}}]])
 
 (derive :reitit.routes/pages :reitit/routes)
 
